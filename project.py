@@ -120,11 +120,11 @@ def get_percentile(regno,semseter):
     li=[]
     for doc in register.find():
         for inst in doc['gpa-details']:
-            if (inst['semester']==3):
+            if (inst['semester']==semseter):
                 li.append(inst['gpa'])
-    print(li)
+    if(len(li)==0):
+        return "error"
     def find_percentile(value, list1): 
-        # print(value)
         sorted_values = sorted(list1)  
         rank = sorted_values.index(value) + 1 
         percentile = ((rank - 1) / (len(list1) - 1)) * 100 
@@ -150,18 +150,15 @@ def get_percentile(regno,semseter):
         print("error in percentile function , error is : ",e)
         return 'error'
 
-    
-    
-# for person in register.find():
-#     print(person)
-# check("RA2211027020130","somethin")
-# get_all_marks("RA2211027020114",4)
-# assaign_marks("RA2211027020130",4)
-# print([p for p in register.find({"name":"mike"})])
-# # def insert()
-# assaign_cgpa('RA2211027020130')
-# addcgpa("RA2211027020130",{"maths":"o","physics":"o"},2)
-# a=register.find_one({"regno":"RA22110270201"})
-
-
-# print(get_percentile("RA2211027020130",3))
+def get_max_and_min_gpa(semester):
+    li=[]
+    for doc in register.find():
+        for inst in doc['gpa-details']:
+            if (inst['semester']==semester):
+                li.append(inst['gpa'])
+    if (len(li)==0):
+        return "error"
+    else:
+        maxgpa=max(li)
+        mingpa=min(li)
+        return {"Max_GPA":maxgpa,"Min_GPA":mingpa}

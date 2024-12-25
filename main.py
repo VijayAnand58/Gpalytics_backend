@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request,Depends,Form
 from pydantic import BaseModel
-from project import insert,check,addcgpa,get_all_marks,assaign_marks,assaign_cgpa,get_percentile
+from project import insert,check,addcgpa,get_all_marks,assaign_marks,assaign_cgpa,get_percentile,get_max_and_min_gpa
 from typing import Dict
 from starlette.middleware.sessions import SessionMiddleware
 import secrets
@@ -87,6 +87,7 @@ async def get_details(request:Request):
         return result
     else:
         raise HTTPException(status_code=401,detail="unauthorized access")
+    
 class get_percent(BaseModel):
     sem:int
 
@@ -100,6 +101,21 @@ async def get_percentile_func(request:Request,data:get_percent):
                 raise HTTPException(status_code=402,detail="invalid semester details")
             else:
                 return{"percentile":result}
+    else:
+        raise HTTPException(status_code=401,detail="Unauthorized access, did not login with username")
+
+class get_min_max(BaseModel):
+    sem:int
+
+@app.get("/protected/get_min_max")
+def min_max(request:Request,data:get_min_max):
+    username=request.session.get("username")
+    if username:
+        result=get_max_and_min_gpa(data.sem)
+        if result=='error':
+            raise HTTPException(status_code=500,detail="internal server error")
+        else:
+            return result
     else:
         raise HTTPException(status_code=401,detail="Unauthorized access, did not login with username")
 
