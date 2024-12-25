@@ -10,24 +10,17 @@ from project import (
     get_percentile,
     get_max_and_min_gpa,
 )
-from typing import Dict
 from starlette.middleware.sessions import SessionMiddleware
 import secrets
 from fastapi.middleware.cors import CORSMiddleware
 
-# Define allowed origins for CORS
-origins = [
-    "http://localhost:3000",  # For local development
-    "https://gpalytics.vercel.app",  # Deployed frontend
-]
-
 # Initialize FastAPI app
 app = FastAPI()
 
-# Add CORS middleware
+# Add CORS middleware to allow all origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Only allow specified origins
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
