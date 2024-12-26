@@ -10,6 +10,7 @@ from project import (
     assaign_cgpa,
     get_percentile,
     get_max_and_min_gpa,
+    register  # Ensure `register` is imported
 )
 from starlette.middleware.sessions import SessionMiddleware
 import secrets
@@ -27,8 +28,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# Add session middleware
-
+# Add session middleware with environment-based secret key
 secret_key = os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16))
 app.add_middleware(SessionMiddleware, secret_key=secret_key)
 
@@ -38,6 +38,7 @@ class UserDetails(BaseModel):
     name: str
     regno: str
     password: str
+
 
 # Endpoint for user registration
 @app.post("/register/user")
@@ -49,8 +50,7 @@ async def create_user(user: UserDetails):
         
         if value == "Wrong register number":
             raise HTTPException(status_code=401, detail="Invalid Register Number Format")
-        else:
-            return {"message": "Successful"}
+        return {"message": "Successful"}
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -58,10 +58,12 @@ async def create_user(user: UserDetails):
             status_code=500, detail=f"An error occurred: {str(e)}"
         )
 
+
 # Login details model
 class Login(BaseModel):
     regno: str
     password: str
+
 
 # Endpoint for user login
 @app.post("/login")
@@ -71,10 +73,11 @@ async def login(user: Login, request: Request):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if result == "wrong password":
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    else:
-        request.session["username"] = user.regno
-        return {"message": "Successful login", "username": user.regno}
+    request.session["username"] = user.regno
+    return {"message": "Successful login", "username": user.regno}
 
+
+# Endpoint to get user details
 @app.get("/protected/get-details")
 async def get_user_details(request: Request):
     username = request.session.get("username")  # Access session data
@@ -83,8 +86,9 @@ async def get_user_details(request: Request):
     user_data = register.find_one({"regno": username}, {"_id": 0, "password": 0})  # Query user details from MongoDB
     if not user_data:
         raise HTTPException(status_code=404, detail="User not found")
+    # Provide a default profile picture if not set
+    user_data["profilePicture"] = user_data.get("profilePicture", "https://i.pravatar.cc/150")
     return user_data  # Return user details
-
 
 
 # CGPA details model for storing CGPA
@@ -92,39 +96,36 @@ class CGPAdetails(BaseModel):
     cgpa: list
     semester: int
 
+
 # Endpoint to store CGPA details
 @app.post("/protected/cgpa")
 async def store_cgpa(request: Request, userdata: CGPAdetails):
     username = request.session.get("username")
-    if username:
-        try:
-            possible = ["O", "A+", "A", "B+", "B", "C", "F"]
-            for details in userdata.cgpa:
-                temp = details.keys()
-                if "course_name" not in temp or "course_code" not in temp or "course_credit" not in temp or "grade" not in temp:
-                    raise HTTPException(status_code=401, detail="Invalid CGPA Details")
-                
-                if details["grade"] in possible:
-                    continue
-                else:
-                    raise HTTPException(status_code=401, detail="Invalid grade provided")
-
-            # Perform operations to store CGPA details
-            addcgpa(username, userdata.cgpa, userdata.semester)
-            assaign_marks(username, userdata.semester)
-            assaign_cgpa(username)
-            return {"message": "Successfully added"}
-        
-        except HTTPException as e:
-            raise e
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"An error occurred: {str(e)}"
-            )
-    else:
+    if not username:
         raise HTTPException(status_code=401, detail="Unauthorized access: Please log in")
+    try:
+        possible = ["O", "A+", "A", "B+", "B", "C", "F"]
+        for details in userdata.cgpa:
+            temp = details.keys()
+            if "course_name" not in temp or "course_code" not in temp or "course_credit" not in temp or "grade" not in temp:
+                raise HTTPException(status_code=401, detail="Invalid CGPA Details")
+            if details["grade"] not in possible:
+                raise HTTPException(status_code=401, detail="Invalid grade provided")
+
+        # Perform operations to store CGPA details
+        addcgpa(username, userdata.cgpa, userdata.semester)
+        assaign_marks(username, userdata.semester)
+        assaign_cgpa(username)
+        return {"message": "Successfully added"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}"
+        )
 
 
+# Endpoint for logout
 @app.post("/logout")
 async def logout(request: Request):
     request.session.clear()  # Clear the session
