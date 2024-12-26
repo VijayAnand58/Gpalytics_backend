@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request, Depends, Form
+import os
 from pydantic import BaseModel
 from project import (
     insert,
@@ -27,7 +28,10 @@ app.add_middleware(
 )
 
 # Add session middleware
-app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(16))
+
+secret_key = os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16))
+app.add_middleware(SessionMiddleware, secret_key=secret_key)
+
 
 # User Details model for registration
 class UserDetails(BaseModel):
@@ -71,6 +75,18 @@ async def login(user: Login, request: Request):
         request.session["username"] = user.regno
         return {"message": "Successful login", "username": user.regno}
 
+@app.get("/protected/get-details")
+async def get_user_details(request: Request):
+    username = request.session.get("username")  # Access session data
+    if not username:
+        raise HTTPException(status_code=401, detail="Not logged in")  # Handle unauthorized access
+    user_data = register.find_one({"regno": username}, {"_id": 0, "password": 0})  # Query user details from MongoDB
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user_data  # Return user details
+
+
+
 # CGPA details model for storing CGPA
 class CGPAdetails(BaseModel):
     cgpa: list
@@ -107,3 +123,9 @@ async def store_cgpa(request: Request, userdata: CGPAdetails):
             )
     else:
         raise HTTPException(status_code=401, detail="Unauthorized access: Please log in")
+
+
+@app.post("/logout")
+async def logout(request: Request):
+    request.session.clear()  # Clear the session
+    return {"message": "Successfully logged out"}  # Return confirmation
