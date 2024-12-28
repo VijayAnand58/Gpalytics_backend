@@ -4,3 +4,4 @@ pymongo==4.10.1
 starlette
 uvicorn
 itsdangerous
+os
