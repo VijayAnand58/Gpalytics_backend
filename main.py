@@ -16,35 +16,35 @@ from project import (
     get_max_and_min_gpa,
     register,
 )
-import os
-import secrets
+
+# Load environment variables
+load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI()
 
-# Define allowed origins explicitly
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Local frontend during development
+# Explicitly define allowed origins for CORS
+allowed_origins = [
+    "http://localhost:3000",  # Local development
     "https://gpalytics.vercel.app",  # Production frontend
 ]
 
-# Add CORS middleware
+# Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,  # Explicitly define allowed origins
-    allow_credentials=True,        # Allow cookies and credentials
-    allow_methods=["*"],           # Allow all HTTP methods
-    allow_headers=["*"],           # Allow all headers
+    allow_origins=allowed_origins,  # Explicitly list allowed origins
+    allow_credentials=True,  # Allow cookies and credentials
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
 )
 
-# Add session middleware for secure cookies
+# Add session middleware
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16)),
-    session_cookie_secure=True,  # Cookies sent only over HTTPS
-    session_cookie_samesite="None",  # Required for cross-origin credentials
+    same_site="None",  # Required for cross-origin cookies
+    https_only=True,  # Ensure cookies are sent only over HTTPS
 )
-
 
 # Models
 class UserDetails(BaseModel):
