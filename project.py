@@ -18,17 +18,17 @@ register=db.register
 cgpa_details={"O":10,"A+":9,"A":8,"B+":7,"B":6,"C":5,"F":0}
 
 # register.insert_one({"name":"mike","age":30})
-def insert(name:str,regno:str,password:str):
-    if register.find_one({"regno":regno}):
-        print("Already exists")
+def insert(name: str, regno: str, password: str):
+    if register.find_one({"regno": regno}):
         return "Already exists"
-    if len(regno) != 15 or not(regno[0:2].isalpha()):
+    if len(regno) != 15 or not regno[0:2].isalpha():
         return "Wrong register number"
-    else:
-        try:
-            register.insert_one({"name":name,"regno":regno,"password":password})
-        except Exception as e:
-            print("some error")
+    try:
+        register.insert_one({"name": name, "regno": regno, "password": password})
+    except Exception as e:
+        print("Some error occurred:", e)
+
+            
 def check(regno:str,password:str):
     resultcheck=register.find_one({'regno':regno})
     if resultcheck==None:

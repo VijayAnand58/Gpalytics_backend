@@ -1,7 +1,6 @@
 fastapi==0.115.6
 pydantic==2.10.4
 pymongo==4.10.1
-starlette
-uvicorn
-itsdangerous
-os
+starlette==0.30.0
+uvicorn==0.22.0
+python-dotenv==1.0.0

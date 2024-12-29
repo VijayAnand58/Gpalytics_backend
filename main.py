@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Initialize FastAPI app
 app = FastAPI()
 
-# Add CORS middleware to allow all origins
+# Add CORS middleware to allow specific origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -31,17 +31,19 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# Add session middleware with environment-based secret key
-secret_key = os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16))
-app.add_middleware(SessionMiddleware, secret_key=secret_key)
-
+# Add session middleware with secure configurations
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16)),
+    session_cookie_secure=True,  # Ensure cookies are sent only over HTTPS
+    session_cookie_samesite="None",  # Required for cross-origin requests with credentials
+)
 
 # User Details model for registration
 class UserDetails(BaseModel):
     name: str
     regno: str
     password: str
-
 
 # Endpoint for user registration
 @app.post("/register/user")
@@ -61,12 +63,10 @@ async def create_user(user: UserDetails):
             status_code=500, detail=f"An error occurred: {str(e)}"
         )
 
-
 # Login details model
 class Login(BaseModel):
     regno: str
     password: str
-
 
 # Endpoint for user login
 @app.post("/login")
@@ -78,7 +78,6 @@ async def login(user: Login, request: Request):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     request.session["username"] = user.regno
     return {"message": "Successful login", "username": user.regno}
-
 
 # Endpoint to get user details
 @app.get("/protected/get-details")
@@ -93,12 +92,10 @@ async def get_user_details(request: Request):
     user_data["profilePicture"] = user_data.get("profilePicture", "https://i.pravatar.cc/150")
     return user_data  # Return user details
 
-
 # CGPA details model for storing CGPA
 class CGPAdetails(BaseModel):
     cgpa: list
     semester: int
-
 
 # Endpoint to store CGPA details
 @app.post("/protected/cgpa")
@@ -126,7 +123,6 @@ async def store_cgpa(request: Request, userdata: CGPAdetails):
         raise HTTPException(
             status_code=500, detail=f"An error occurred: {str(e)}"
         )
-
 
 # Endpoint for logout
 @app.post("/logout")
