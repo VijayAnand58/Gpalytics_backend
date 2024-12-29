@@ -127,6 +127,36 @@ async def store_cgpa(request: Request, userdata: CGPAdetails):
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
+
+@app.get('/protected/get-details')
+async def get_details(request: Request):
+    username = request.session.get('username')
+    if username:
+        result = get_all_marks(username)
+        print(result)
+        return result
+    else:
+        raise HTTPException(status_code=401, detail="unauthorized access")
+
+
+class GetPercent(BaseModel):
+    sem: int
+
+
+@app.get("/protected/get-percentile")
+async def get_percentile_func(request: Request, data: GetPercent):
+    username = request.session.get('username')
+    if username:
+        if data.sem:
+            result = get_percentile(username, data.sem)
+            if result == "error":
+                raise HTTPException(status_code=402, detail="invalid semester details")
+            else:
+                return {"percentile": result}
+    else:
+        raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
+
+
 @app.post("/logout")
 async def logout(request: Request):
     request.session.clear()
