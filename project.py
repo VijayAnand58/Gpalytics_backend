@@ -1,45 +1,47 @@
-from pymongo  import MongoClient
+from pymongo import MongoClient
 from pymongo.server_api import ServerApi
+from dotenv import load_dotenv
+import os
 
+# Load environment variables
+load_dotenv()
 
-url = "mongodb+srv://va7314:Vijvis@mycluster.5seb7.mongodb.net/?retryWrites=true&w=majority&appName=MyCluster"
-# Create a new client and connect to the server
-client = MongoClient(url, server_api=ServerApi('1'))
-# Send a ping to confirm a successful connection
+# MongoDB connection string from .env
+mongo_url = os.getenv("MONGO_DB_URL")
+client = MongoClient(mongo_url, server_api=ServerApi('1'))
+
+# Database setup
 try:
     client.admin.command('ping')
-    print("Pinged your deployment. You successfully connected to MongoDB!")
+    print("Pinged your deployment. Successfully connected to MongoDB!")
 except Exception as e:
-    print(e)
+    print("Error connecting to MongoDB:", e)
 
-db=client.gpalyticsdb
-register=db.register
+db = client.gpalyticsdb
+register = db.register
 
-cgpa_details={"O":10,"A+":9,"A":8,"B+":7,"B":6,"C":5,"F":0}
+cgpa_details = {"O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6, "C": 5, "F": 0}
 
-# register.insert_one({"name":"mike","age":30})
+
 def insert(name: str, regno: str, password: str):
     if register.find_one({"regno": regno}):
         return "Already exists"
-    if len(regno) != 15 or not regno[0:2].isalpha():
+    if len(regno) != 15 or not regno[:2].isalpha():
         return "Wrong register number"
     try:
         register.insert_one({"name": name, "regno": regno, "password": password})
     except Exception as e:
-        print("Some error occurred:", e)
+        print("Error inserting data:", e)
 
-            
-def check(regno:str,password:str):
-    resultcheck=register.find_one({'regno':regno})
-    if resultcheck==None:
+
+def check(regno: str, password: str):
+    user = register.find_one({"regno": regno})
+    if not user:
         return "no user exists"
-    if resultcheck:
-        if password==resultcheck['password']:
-            print("success")
-            return "success"
-        else:
-            print("wrong password")
-            return "wrong password"  
+    if user["password"] == password:
+        return "success"
+    return "wrong password"
+        
 def addcgpa(regno,cgpadetails,semeseter):
     try:
         document = register.find_one({"regno": regno, "gpa-details.semester": semeseter})
@@ -55,6 +57,7 @@ def addcgpa(regno,cgpadetails,semeseter):
             print(result)
     except Exception as e:
         print("Some error while updating",e)
+
 def get_all_marks(regno,semester=None):
     try:
         if semester==None:
@@ -71,6 +74,8 @@ def get_all_marks(regno,semester=None):
 
     except Exception as e:
         print("Error while accessing")
+
+
 def assaign_marks(regno,semester):
     try:
         grade_sub=[]
@@ -102,6 +107,8 @@ def assaign_marks(regno,semester):
         # ,"gpa-details.semester":semester        
     except Exception as e:
         print("Error while accessing",e)
+
+
 def assaign_cgpa(regno):
     try:
         document=register.find_one({'regno':regno})
