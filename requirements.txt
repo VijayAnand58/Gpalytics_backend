@@ -4,3 +4,4 @@ pymongo==4.10.1
 starlette==0.41.0  
 uvicorn==0.22.0
 python-dotenv==1.0.0
+itsdangerous==2.1.2
