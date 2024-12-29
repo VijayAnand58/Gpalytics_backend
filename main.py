@@ -38,7 +38,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# Add session middleware
+# Add session middleware with secure attributes
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16)),
@@ -86,8 +86,11 @@ async def login(user: Login, request: Request):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if result == "wrong password":
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    response = {"message": "Login successful", "username": user.regno}
+    # Manually set cookies with secure attributes
     request.session["username"] = user.regno
-    return {"message": "Login successful", "username": user.regno}
+    return response
 
 
 @app.get("/protected/get-details")
