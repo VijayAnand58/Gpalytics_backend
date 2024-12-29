@@ -126,8 +126,6 @@ async def store_cgpa(request: Request, userdata: CGPAdetails):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-
-
 @app.get('/protected/get-details')
 async def get_details(request: Request):
     username = request.session.get('username')
@@ -137,11 +135,10 @@ async def get_details(request: Request):
         return result
     else:
         raise HTTPException(status_code=401, detail="unauthorized access")
-
+    
 
 class GetPercent(BaseModel):
     sem: int
-
 
 @app.get("/protected/get-percentile")
 async def get_percentile_func(request: Request, data: GetPercent):
@@ -155,7 +152,24 @@ async def get_percentile_func(request: Request, data: GetPercent):
                 return {"percentile": result}
     else:
         raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
+class GetMinMax(BaseModel):
+    sem: int
 
+@app.get("/protected/get_min_max")
+def min_max(request: Request, data: GetMinMax):
+    username = request.session.get("username")
+    if username:
+        result = get_max_and_min_gpa(data.sem)
+        if result == "error":
+            raise HTTPException(
+                status_code=500, detail="internal server error"
+            )
+        else:
+            return result
+    else:
+        raise HTTPException(
+            status_code=401, detail="Unauthorized access, did not login with username"
+        )
 
 @app.post("/logout")
 async def logout(request: Request):
