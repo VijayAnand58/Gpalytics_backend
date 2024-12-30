@@ -14,7 +14,8 @@ from project import (
     assaign_marks,
     assaign_cgpa,
     get_percentile,
-    get_max_and_min_gpa
+    get_max_and_min_gpa,
+    register
 )
 
 # Load environment variables
@@ -87,7 +88,7 @@ async def login(user: Login, request: Request):
         return response
     
     
-@app.get("/protected/get-details") 
+@app.get("/protected/get-sem-details") 
 async def get_user_details(request: Request, sem: Optional[int] = Query(None)): 
     username = request.session.get("username") 
     if not username: 
@@ -101,6 +102,19 @@ async def get_user_details(request: Request, sem: Optional[int] = Query(None)):
     if result == "No data": 
         raise HTTPException(status_code=401, detail="invalid credentials") 
     return result
+
+#temp code for backwards compatiblity
+@app.get("/protected/get-details")
+async def get_user_details(request: Request):
+    username = request.session.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    user_data = register.find_one({"regno": username}, {"_id": 0, "password": 0})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    user_data["profilePicture"] = user_data.get("profilePicture", "https://i.pravatar.cc/150")
+    return user_data
+# temp code ends
 
 class CourseDetails(BaseModel): 
     course_name: str 
