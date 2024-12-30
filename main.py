@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request,Query,Depends
 from pydantic import BaseModel
+from typing import Optional, List
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -13,8 +14,7 @@ from project import (
     assaign_marks,
     assaign_cgpa,
     get_percentile,
-    get_max_and_min_gpa,
-    register,
+    get_max_and_min_gpa
 )
 
 # Load environment variables
@@ -44,24 +44,13 @@ app.add_middleware(
     secret_key=os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16)),
     same_site="None",  # Required for cross-origin cookies
     https_only=True,  # Ensure cookies are sent only over HTTPS
+    max_age=2700
 )
 
-# Models
 class UserDetails(BaseModel):
     name: str
     regno: str
     password: str
-
-
-class Login(BaseModel):
-    regno: str
-    password: str
-
-
-class CGPAdetails(BaseModel):
-    cgpa: list
-    semester: int
-
 
 # Endpoints
 @app.post("/register/user")
@@ -78,6 +67,9 @@ async def create_user(user: UserDetails):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
+class Login(BaseModel):
+    regno: str
+    password: str
 
 @app.post("/login")
 async def login(user: Login, request: Request):
@@ -86,24 +78,39 @@ async def login(user: Login, request: Request):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if result == "wrong password":
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    if result == "error":
+        raise HTTPException(status_code=500,detail="Internal server error")
+    if result == "success":
+        response = {"message": "Login successful", "username": user.regno}
+        # Manually set cookies with secure attributes
+        request.session["username"] = user.regno
+        return response
+    
+    
+@app.get("/protected/get-details") 
+async def get_user_details(request: Request, sem: Optional[int] = Query(None)): 
+    username = request.session.get("username") 
+    if not username: 
+        raise HTTPException(status_code=401, detail="Not logged in") 
+    if sem is not None: 
+        result = get_all_marks(username, sem) 
+    else: 
+        result = get_all_marks(username) 
+    if result == "error": 
+        raise HTTPException(status_code=500, detail="Internal server error") 
+    if result == "No data": 
+        raise HTTPException(status_code=401, detail="invalid credentials") 
+    return result
 
-    response = {"message": "Login successful", "username": user.regno}
-    # Manually set cookies with secure attributes
-    request.session["username"] = user.regno
-    return response
+class CourseDetails(BaseModel): 
+    course_name: str 
+    course_code: str 
+    course_credit: int 
+    grade: str
 
-
-@app.get("/protected/get-details")
-async def get_user_details(request: Request):
-    username = request.session.get("username")
-    if not username:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    user_data = register.find_one({"regno": username}, {"_id": 0, "password": 0})
-    if not user_data:
-        raise HTTPException(status_code=404, detail="User not found")
-    user_data["profilePicture"] = user_data.get("profilePicture", "https://i.pravatar.cc/150")
-    return user_data
-
+class CGPAdetails(BaseModel):
+    cgpa: List[CourseDetails]
+    semester: int
 
 @app.post("/protected/cgpa")
 async def store_cgpa(request: Request, userdata: CGPAdetails):
@@ -113,35 +120,28 @@ async def store_cgpa(request: Request, userdata: CGPAdetails):
     try:
         possible_grades = ["O", "A+", "A", "B+", "B", "C", "F"]
         for details in userdata.cgpa:
-            if not all(key in details for key in ["course_name", "course_code", "course_credit", "grade"]):
-                raise HTTPException(status_code=400, detail="Invalid CGPA details")
-            if details["grade"] not in possible_grades:
+            # if not all(key in details for key in ["course_name", "course_code", "course_credit", "grade"]):
+            #     raise HTTPException(status_code=400, detail="Invalid CGPA details")
+            if details.grade not in possible_grades:
                 raise HTTPException(status_code=400, detail="Invalid grade provided")
-        addcgpa(username, userdata.cgpa, userdata.semester)
-        assaign_marks(username, userdata.semester)
-        assaign_cgpa(username)
+        cgpa_dicts = [course.model_dump() for course in userdata.cgpa]
+        result_add_cgpa=addcgpa(username, cgpa_dicts, userdata.semester)
+        result_assign_mark=assaign_marks(username, userdata.semester)
+        result_assign_cgpa=assaign_cgpa(username)
+        if result_add_cgpa=="error" or result_assign_cgpa=="error" or result_assign_mark=="error":
+            raise HTTPException(status_code=500,detail="internal server error")
         return {"message": "CGPA details added successfully"}
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-@app.get('/protected/get-details')
-async def get_details(request: Request):
-    username = request.session.get('username')
-    if username:
-        result = get_all_marks(username)
-        print(result)
-        return result
-    else:
-        raise HTTPException(status_code=401, detail="unauthorized access")
-    
-
-class GetPercent(BaseModel):
-    sem: int
+class GetPercent:
+    def __init__(self,sem: int =Query(...,description="Semester info is required")):
+        self.sem=sem
 
 @app.get("/protected/get-percentile")
-async def get_percentile_func(request: Request, data: GetPercent):
+async def get_percentile_func(request: Request, data: GetPercent=Depends()):
     username = request.session.get('username')
     if username:
         if data.sem:
@@ -152,11 +152,13 @@ async def get_percentile_func(request: Request, data: GetPercent):
                 return {"percentile": result}
     else:
         raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
-class GetMinMax(BaseModel):
-    sem: int
+
+class GetMinMax:
+    def __init__(self,sem: int =Query(...,description="Semester info is required")):
+        self.sem=sem
 
 @app.get("/protected/get_min_max")
-def min_max(request: Request, data: GetMinMax):
+def min_max(request: Request, data: GetMinMax=Depends()):
     username = request.session.get("username")
     if username:
         result = get_max_and_min_gpa(data.sem)
@@ -175,3 +177,10 @@ def min_max(request: Request, data: GetMinMax):
 async def logout(request: Request):
     request.session.clear()
     return {"message": "Logout successful"}
+
+@app.middleware("http") 
+async def update_session_timeout(request: Request, call_next): 
+    response = await call_next(request) 
+    if "session" in request.session: 
+        response.set_cookie("session", request.cookies["session"], max_age=2700) 
+    return response

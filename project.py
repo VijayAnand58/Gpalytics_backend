@@ -2,6 +2,7 @@ from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from dotenv import load_dotenv
 import os
+import bcrypt
 
 # Load environment variables
 load_dotenv()
@@ -22,6 +23,13 @@ register = db.register
 
 cgpa_details = {"O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6, "C": 5, "F": 0}
 
+def hash_password(plain_password):  
+    salt = bcrypt.gensalt() 
+    hashed_password = bcrypt.hashpw(plain_password.encode('utf-8'), salt) 
+    return hashed_password
+
+def check_password(plain_password, hashed_password): 
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
 def insert(name: str, regno: str, password: str):
     if register.find_one({"regno": regno}):
@@ -29,7 +37,8 @@ def insert(name: str, regno: str, password: str):
     if len(regno) != 15 or not regno[:2].isalpha():
         return "Wrong register number"
     try:
-        register.insert_one({"name": name, "regno": regno, "password": password})
+        hashedpassword=hash_password(password)
+        register.insert_one({"name": name, "regno": regno, "password": hashedpassword})
     except Exception as e:
         print("Error inserting data:", e)
 
@@ -38,9 +47,14 @@ def check(regno: str, password: str):
     user = register.find_one({"regno": regno})
     if not user:
         return "no user exists"
-    if user["password"] == password:
-        return "success"
-    return "wrong password"
+    try:
+        if check_password(password,user["password"]):
+            return "success"
+        else:
+            return "wrong password"
+    except Exception as e:
+        print("Error in password checking function and the error is ",e)
+        return "error"
         
 def addcgpa(regno,cgpadetails,semeseter):
     try:
@@ -49,14 +63,15 @@ def addcgpa(regno,cgpadetails,semeseter):
             result=register.update_one(
                 {"regno":regno,"gpa-details.semester":semeseter},
                 {"$set":{"gpa-details.$.grades":cgpadetails}}) 
-            print("succesfully updated",semeseter,"marks")
+            print("succesfully updated record \n",semeseter,"marks")
         else:       
             result=register.update_one(
             {"regno": regno},
             {"$push": {"gpa-details": {"semester": semeseter, "grades": cgpadetails,"gpa":0}}})
-            print(result)
+            print("succesfullly added record \n",result)
     except Exception as e:
         print("Some error while updating",e)
+        return "error"
 
 def get_all_marks(regno,semester=None):
     try:
@@ -74,6 +89,7 @@ def get_all_marks(regno,semester=None):
 
     except Exception as e:
         print("Error while accessing")
+        return "error"
 
 
 def assaign_marks(regno,semester):
@@ -107,7 +123,7 @@ def assaign_marks(regno,semester):
         # ,"gpa-details.semester":semester        
     except Exception as e:
         print("Error while accessing",e)
-
+        return "error"
 
 def assaign_cgpa(regno):
     try:
@@ -121,24 +137,28 @@ def assaign_cgpa(regno):
             print("succesfully added cgpa which was",cgpa)
         else:
             print("fatal error")
+            return "error"
         
     except Exception as e:
         print("error occured ",e)
+        return "error"
+
 def get_percentile(regno,semseter):
     li=[]
-    for doc in register.find():
+    for doc in register.find({"gpa-details":{"$exists": True}}):
         for inst in doc['gpa-details']:
             if (inst['semester']==semseter):
                 li.append(inst['gpa'])
     if(len(li)==0):
         return "error"
+    
     def find_percentile(value, list1): 
         sorted_values = sorted(list1)  
         rank = sorted_values.index(value) + 1 
         percentile = ((rank - 1) / (len(list1) - 1)) * 100 
         return percentile
     try:
-        document=register.find_one({"regno":regno})
+        document=register.find_one({"regno":regno,"gpa-details":{"$exists": True}})
         found=False
         if document:
             for details in document['gpa-details']:
@@ -160,7 +180,7 @@ def get_percentile(regno,semseter):
 
 def get_max_and_min_gpa(semester):
     li=[]
-    for doc in register.find():
+    for doc in register.find({"gpa-details":{"$exists": True}}):
         for inst in doc['gpa-details']:
             if (inst['semester']==semester):
                 li.append(inst['gpa'])
