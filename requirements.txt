@@ -11,3 +11,4 @@ scikit_learn==1.6.0
 starlette==0.41.0  
 uvicorn==0.22.0
 google.generativeai
+python-multipart
