@@ -33,7 +33,8 @@ def check_password(plain_password, hashed_password):
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
 # a gloabl variable called list_of_year to check the whether the year is in the correct range
-list_of_years=None
+current_year=datetime.now().year
+list_of_years=list(range(2015,current_year+1))
 
 def insert(name: str, regno: str, password: str, batch:int):
     if register.find_one({"regno": regno}):
@@ -41,8 +42,6 @@ def insert(name: str, regno: str, password: str, batch:int):
     if len(regno) != 15 or not regno[:2].isalpha():
         return "Wrong register number"
     global list_of_years
-    current_year=datetime.now().year
-    list_of_years=list(range(2015,current_year+1))
     if batch not in list_of_years:
         return "wrong batch year"
     try:
