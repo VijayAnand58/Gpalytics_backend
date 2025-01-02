@@ -7,17 +7,9 @@ from dotenv import load_dotenv
 import os
 import secrets
 from project import (
-    insert,
-    check,
-    addcgpa,
-    get_all_marks,
-    assaign_marks,
-    assaign_cgpa,
-    get_percentile,
-    get_max_and_min_gpa,
-    register
+    insert,check,addcgpa,get_all_marks,assaign_marks,assaign_cgpa,get_percentile,
+    get_max_and_min_gpa,get_max_and_min_gpa_local,get_prediction_next_sem,get_full_user_details
 )
-
 # Load environment variables
 load_dotenv()
 
@@ -52,16 +44,19 @@ class UserDetails(BaseModel):
     name: str
     regno: str
     password: str
+    batch:int
 
 # Endpoints
 @app.post("/register/user")
 async def create_user(user: UserDetails):
     try:
-        value = insert(user.name, user.regno, user.password)
+        value = insert(user.name, user.regno, user.password,user.batch)
         if value == "Already exists":
             raise HTTPException(status_code=409, detail="Conflict: User already exists")
         if value == "Wrong register number":
             raise HTTPException(status_code=400, detail="Invalid Register Number Format")
+        if value == "wrong batch year":
+            raise HTTPException(status_code=400, detail="Invalid batch year")
         return {"message": "Registration successful"}
     except HTTPException as e:
         raise e
@@ -103,18 +98,19 @@ async def get_user_details(request: Request, sem: Optional[int] = Query(None)):
         raise HTTPException(status_code=401, detail="invalid credentials") 
     return result
 
-#temp code for backwards compatiblity
+
 @app.get("/protected/get-details")
 async def get_user_details(request: Request):
     username = request.session.get("username")
-    if not username:
-        raise HTTPException(status_code=401, detail="Not logged in")
-    user_data = register.find_one({"regno": username}, {"_id": 0, "password": 0})
-    if not user_data:
-        raise HTTPException(status_code=404, detail="User not found")
-    user_data["profilePicture"] = user_data.get("profilePicture", "https://i.pravatar.cc/150")
-    return user_data
-# temp code ends
+    if username:
+        result=get_full_user_details(username)
+        if result =="error":
+            raise HTTPException(status_code=500,detail="Internal server error")
+        else:
+            return result
+    else:
+        raise HTTPException(status_code=401, detail="Unauthorized access: Please log in")
+
 
 class CourseDetails(BaseModel): 
     course_name: str 
@@ -134,8 +130,6 @@ async def store_cgpa(request: Request, userdata: CGPAdetails):
     try:
         possible_grades = ["O", "A+", "A", "B+", "B", "C", "F"]
         for details in userdata.cgpa:
-            # if not all(key in details for key in ["course_name", "course_code", "course_credit", "grade"]):
-            #     raise HTTPException(status_code=400, detail="Invalid CGPA details")
             if details.grade not in possible_grades:
                 raise HTTPException(status_code=400, detail="Invalid grade provided")
         cgpa_dicts = [course.model_dump() for course in userdata.cgpa]
@@ -162,6 +156,8 @@ async def get_percentile_func(request: Request, data: GetPercent=Depends()):
             result = get_percentile(username, data.sem)
             if result == "error":
                 raise HTTPException(status_code=402, detail="invalid semester details")
+            if result =="Database not populated":
+                raise HTTPException(status_code=503,detail="Database isnt populated enough to find percentile, wait for some time")
             else:
                 return {"percentile": result}
     else:
@@ -171,26 +167,61 @@ class GetMinMax:
     def __init__(self,sem: int =Query(...,description="Semester info is required")):
         self.sem=sem
 
-@app.get("/protected/get_min_max")
+@app.get("/protected/get-min-max")
 def min_max(request: Request, data: GetMinMax=Depends()):
     username = request.session.get("username")
     if username:
-        result = get_max_and_min_gpa(data.sem)
+        result = get_max_and_min_gpa(username,data.sem)
         if result == "error":
-            raise HTTPException(
-                status_code=500, detail="internal server error"
-            )
+            raise HTTPException(status_code=500, detail="internal server error")
+        if result == "Database not populated":
+            raise HTTPException(status_code=503,detail="Database isnt populated enough to find min max, wait for some time")
         else:
             return result
     else:
-        raise HTTPException(
-            status_code=401, detail="Unauthorized access, did not login with username"
-        )
+        raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
+
+@app.get("/protected/get-local-min-max")
+def local_min_max(request:Request,data: GetMinMax=Depends()):
+    username=request.session.get("username")
+    if username:
+        result=get_max_and_min_gpa_local(username,data.sem)
+        if result=="No person exists, or no record exists":
+            raise HTTPException(status_code=204,detail="No person exists, or no record exists")
+        if result=="some internal error":
+            raise HTTPException(status_code=500,detail="internal server error")
+        else:
+            return result
+    else:
+        raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
+
+@app.get("/protected/predict-next-sem")
+async def predict_next_sem(request:Request):
+    username=request.session.get("username")
+    if username:
+        result=get_prediction_next_sem(username)
+        if result=="error in data collection":
+            raise HTTPException(status_code=404,detail="The user document doesnt exist")
+        elif result=="Error, insufficient data to predict next semester prediction":
+            raise HTTPException(status_code=422,detail="Error, insufficient data present, there needs to be atleast 3 semester entries in the databse to perform the process")
+        elif result=="Maximum semesters reached, cant calculate for unavailable semester":
+            raise HTTPException(status_code=403, detail="you have reached semester 8, there are no semester ahead of this to calculate")
+        elif result=="Error, person records doesnt contain info from from firstsem, till date":
+            raise HTTPException(status_code=403,detail="Need all the info from first semester to current semester")
+        elif result=="error":
+            raise HTTPException(status_code=500,detail="Interanl server error")
+        else:
+            return {"Predicted GPA of next semester":result}
+    else:
+        raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
 
 @app.post("/logout")
 async def logout(request: Request):
+    username = request.session.get("username")
+    if username is None:
+        raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
     request.session.clear()
-    return {"message": "Logout successful"}
+    return {"message": "Logout successful", "User who logged out was": username}
 
 @app.middleware("http") 
 async def update_session_timeout(request: Request, call_next): 
