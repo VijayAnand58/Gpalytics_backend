@@ -308,4 +308,12 @@ def get_prediction_next_sem(regno):
     except Exception as e:
         print(e)
         return "error"
+
+# def get_most_difficult_subject(regno:str):
+#     try:
+#         document=register.find_one({"regno":regno,"batch_year":{"$exists": True}},{"_id":0,"batch_year":1})
+#         batch=document.get("batch_year")
+#     except Exception as e:
+#         print("Error in get most difficult subject while checking for batch",e)
+#         return "error"
     

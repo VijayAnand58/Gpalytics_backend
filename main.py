@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request,Query,Depends
+from fastapi import FastAPI, HTTPException, Request,Query,Depends,File,UploadFile
 from pydantic import BaseModel
 from typing import Optional, List
 from starlette.middleware.sessions import SessionMiddleware
@@ -10,6 +10,7 @@ from project import (
     insert,check,addcgpa,get_all_marks,assaign_marks,assaign_cgpa,get_percentile,
     get_max_and_min_gpa,get_max_and_min_gpa_local,get_prediction_next_sem,get_full_user_details
 )
+from gemini import sharpen_image,process_result_card
 # Load environment variables
 load_dotenv()
 
@@ -23,13 +24,13 @@ allowed_origins = [
 ]
 
 # Configure CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,  # Explicitly list allowed origins
-    allow_credentials=True,  # Allow cookies and credentials
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=allowed_origins,  # Explicitly list allowed origins
+#     allow_credentials=True,  # Allow cookies and credentials
+#     allow_methods=["*"],  # Allow all HTTP methods
+#     allow_headers=["*"],  # Allow all headers
+# )
 
 # Add session middleware with secure attributes
 app.add_middleware(
@@ -121,6 +122,24 @@ class CourseDetails(BaseModel):
 class CGPAdetails(BaseModel):
     cgpa: List[CourseDetails]
     semester: int
+
+# local function
+def store_cgpa_local(username,userdata:CGPAdetails):
+    try:
+        possible_grades = ["O", "A+", "A", "B+", "B", "C", "F"]
+        for details in userdata.cgpa:
+            if details.grade not in possible_grades:
+                return "Invalid grade provided"
+        cgpa_dicts = [course.model_dump() for course in userdata.cgpa]
+        result_add_cgpa=addcgpa(username, cgpa_dicts, userdata.semester)
+        result_assign_mark=assaign_marks(username, userdata.semester)
+        result_assign_cgpa=assaign_cgpa(username)
+        if result_add_cgpa=="error" or result_assign_cgpa=="error" or result_assign_mark=="error":
+            return "internal server error"
+        return "CGPA details added successfully"
+    except Exception as e:
+        print("error in local store gpa method",e)
+        return "internal server error"
 
 @app.post("/protected/cgpa")
 async def store_cgpa(request: Request, userdata: CGPAdetails):
@@ -214,6 +233,36 @@ async def predict_next_sem(request:Request):
             return {"Predicted GPA of next semester":result}
     else:
         raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
+
+@app.post("/protected/upload-image")
+async def upload_image(request:Request,file: UploadFile=File(...)):
+    username=request.session.get("username")
+    if username:
+        image_data= await file.read()
+        sharpened_image_data = sharpen_image(image_data)
+        if sharpened_image_data =="error":
+            raise HTTPException(status_code=500, detail="Internal server error, error in image sharpening")   
+        result = await process_result_card(sharpened_image_data, "AIzaSyCfgJjB605M7J9PcPwWjSzMr2P3KY_43JY")
+        if result=="error":
+            raise HTTPException(status_code=500,detail="Internal server error, error in gemini api result")
+        if result=={"message": "error"}:
+            raise HTTPException(status_code=400,detail="Wrong image sent, please give correct image format")
+        else:
+            try:
+                recv_data=CGPAdetails(**result)
+                response=store_cgpa_local(username,recv_data)
+                if response=="CGPA details added successfully":
+                    return {"message":"CGPA details added successfully"}
+                if response == "internal server error":
+                    raise HTTPException(status_code=500,detail="Internal server error")
+                if response =="Invalid grade provided":
+                    raise HTTPException(status_code=500, detail="Grade is incorrect")
+            except Exception as e:
+                print("data validation error in upload image method",e)
+                raise HTTPException(status_code=500,detail="data validation error")
+
+    else:
+        raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")        
 
 @app.post("/logout")
 async def logout(request: Request):
