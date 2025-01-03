@@ -85,7 +85,6 @@ def get_all_marks(regno:str,semester=None):
     try:
         if semester==None:
             document=register.find_one({"regno":regno},{"_id":0})
-            print(document['gpa-details'])
             if document["cgpa_of_sem"]:
                 return {"all result":document['gpa-details'],"CGPA":document["cgpa_of_sem"]}
             else:
