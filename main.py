@@ -252,7 +252,7 @@ async def upload_image(request:Request,file: UploadFile=File(...)):
                 recv_data=CGPAdetails(**result)
                 response=store_cgpa_local(username,recv_data)
                 if response=="CGPA details added successfully":
-                    return {"message":"CGPA details added successfully"}
+                    return {"message":"CGPA details added successfully","sem":result["semester"]}
                 if response == "internal server error":
                     raise HTTPException(status_code=500,detail="Internal server error")
                 if response =="Invalid grade provided":

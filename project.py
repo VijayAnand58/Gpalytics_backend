@@ -39,7 +39,7 @@ list_of_years=list(range(2015,current_year+1))
 def insert(name: str, regno: str, password: str, batch:int):
     if register.find_one({"regno": regno}):
         return "Already exists"
-    if len(regno) != 15 or not regno[:2].isalpha():
+    if len(regno) != 15 or not regno[:2].isalpha() or any(c.islower() for c in regno[:2]):
         return "Wrong register number"
     global list_of_years
     if batch not in list_of_years:
