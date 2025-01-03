@@ -5,6 +5,8 @@ import os
 import bcrypt
 from datetime import datetime
 from models import predict_grades
+import random
+import greets
 # Load environment variables
 load_dotenv()
 
@@ -90,10 +92,30 @@ def get_all_marks(regno:str,semester=None):
                 return document['gpa-details']
         else:
             document=register.find_one({"regno":regno,"gpa-details.semester": semester},{"_id": 0, "gpa-details.$": 1})
-            return document    
-
+            if document is not None:
+                random_num=random.randint(1,6)
+                greet_msg=None
+                gpa_value = document["gpa-details"][0]["gpa"]
+                if gpa_value==10:
+                    greet_msg=greets.greet_10[random_num]
+                elif gpa_value<10 and gpa_value>=9:
+                    greet_msg=greets.greet_9_9_to_9[random_num]
+                elif gpa_value<9 and gpa_value>=8:
+                    greet_msg=greets.greet_8_9_to_8[random_num]
+                elif gpa_value<8 and gpa_value>=7:
+                    greet_msg=greets.greet_7_9_to_7[random_num]
+                elif gpa_value<7 and gpa_value>=6:
+                    greet_msg=greets.greet_6_9_to_6[random_num]
+                elif gpa_value<6 and gpa_value>=5:
+                    greet_msg=greets.greet_5_9_to_5[random_num]
+                elif gpa_value<5 and gpa_value>=0:
+                    greet_msg=greets.greet_less_than_5[random_num]
+                document["greet_msg"]=document.get("greet_msg",greet_msg)
+                return document
+            else:
+                return "None document return"  
     except Exception as e:
-        print("Error while accessing")
+        print("Error while accessing",e)
         return "error"
 
 def get_full_user_details(regno:str):

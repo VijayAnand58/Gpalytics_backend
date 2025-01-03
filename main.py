@@ -24,13 +24,13 @@ allowed_origins = [
 ]
 
 # Configure CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,  # Explicitly list allowed origins
-    allow_credentials=True,  # Allow cookies and credentials
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=allowed_origins,  # Explicitly list allowed origins
+#     allow_credentials=True,  # Allow cookies and credentials
+#     allow_methods=["*"],  # Allow all HTTP methods
+#     allow_headers=["*"],  # Allow all headers
+# )
 
 # Add session middleware with secure attributes
 app.add_middleware(
@@ -96,7 +96,9 @@ async def get_user_details(request: Request, sem: Optional[int] = Query(None)):
     if result == "error": 
         raise HTTPException(status_code=500, detail="Internal server error") 
     if result == "No data": 
-        raise HTTPException(status_code=401, detail="invalid credentials") 
+        raise HTTPException(status_code=401, detail="invalid credentials")
+    if result =="None document return":
+        raise HTTPException(status_code=404, detail="No document exist for that particular semester") 
     return result
 
 
