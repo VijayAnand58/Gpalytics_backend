@@ -24,13 +24,13 @@ allowed_origins = [
 ]
 
 # Configure CORS middleware
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=allowed_origins,  # Explicitly list allowed origins
-#     allow_credentials=True,  # Allow cookies and credentials
-#     allow_methods=["*"],  # Allow all HTTP methods
-#     allow_headers=["*"],  # Allow all headers
-# )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,  # Explicitly list allowed origins
+    allow_credentials=True,  # Allow cookies and credentials
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 # Add session middleware with secure attributes
 app.add_middleware(
