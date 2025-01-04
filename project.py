@@ -93,12 +93,15 @@ def get_all_marks(regno:str,semester=None):
     try:
         if semester==None:
             document=register.find_one({"regno":regno},{"_id":0})
-            if document["cgpa_of_sem"]:
-                data1={"all result":document['gpa-details'],"CGPA":document["cgpa_of_sem"]}
-                data1["all result"] = sorted(data1["all result"], key=lambda x: x["semester"])
-                return data1
+            if document is not None:
+                if document["cgpa_of_sem"]:
+                    data1={"all result":document['gpa-details'],"CGPA":document["cgpa_of_sem"]}
+                    data1["all result"] = sorted(data1["all result"], key=lambda x: x["semester"])
+                    return data1
+                else:
+                    return document['gpa-details']
             else:
-                return document['gpa-details']
+                return "None document return"
         else:
             document=register.find_one({"regno":regno,"gpa-details.semester": semester},{"_id": 0, "gpa-details.$": 1})
             if document is not None:

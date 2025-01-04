@@ -106,7 +106,7 @@ async def get_user_details(request: Request, sem: Optional[int] = Query(None)):
     if result == "No data": 
         raise HTTPException(status_code=401, detail="invalid credentials")
     if result =="None document return":
-        raise HTTPException(status_code=404, detail="No document exist for that particular semester") 
+        raise HTTPException(status_code=404, detail="No document exist for that particular semester or semesters") 
     return result
 
 
