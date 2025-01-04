@@ -58,6 +58,14 @@ async def create_user(user: UserDetails):
             raise HTTPException(status_code=400, detail="Invalid Register Number Format")
         if value == "wrong batch year":
             raise HTTPException(status_code=400, detail="Invalid batch year")
+        if value=="Password doesnt have any digits":
+            raise HTTPException(status_code=400,detail="Password doesnt have any digits")
+        if value=="Password doesnt have any uppercase":
+            raise HTTPException(status_code=400,detail="Password doesnt have any uppercase")
+        if value=="Password doesnt have at least one special character":
+            raise HTTPException(status_code=400,detail="Password doesnt have at least one special character")
+        if value=="Password less than 8 characters":
+            raise HTTPException(status_code=400,detail="Password less than 8 characters")
         return {"message": "Registration successful"}
     except HTTPException as e:
         raise e

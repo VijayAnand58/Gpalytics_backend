@@ -41,8 +41,16 @@ list_of_years=list(range(2015,current_year+1))
 def insert(name: str, regno: str, password: str, batch:int):
     if register.find_one({"regno": regno}):
         return "Already exists"
-    if len(regno) != 15 or not regno[:2].isalpha() or any(c.islower() for c in regno[:2]):
+    if len(regno) != 15 or not regno[:2].isalpha() or any(c.islower() for c in regno[:2])or not(regno[2:].isdigit()):
         return "Wrong register number"
+    if len(password)<8:
+        return "Password less than 8 characters"
+    if not(any(k.isupper() for k in password)):
+        return "Password doesnt have any uppercase"
+    if not(any(k.isdigit() for k in password)):
+        return "Password doesnt have any digits"
+    if not(any( not(k.isalnum()) for k in password)):
+        return "Password doesnt have at least one special character"
     global list_of_years
     if batch not in list_of_years:
         return "wrong batch year"
