@@ -94,7 +94,9 @@ def get_all_marks(regno:str,semester=None):
         if semester==None:
             document=register.find_one({"regno":regno},{"_id":0})
             if document["cgpa_of_sem"]:
-                return {"all result":document['gpa-details'],"CGPA":document["cgpa_of_sem"]}
+                data1={"all result":document['gpa-details'],"CGPA":document["cgpa_of_sem"]}
+                data1["all result"] = sorted(data1["all result"], key=lambda x: x["semester"])
+                return data1
             else:
                 return document['gpa-details']
         else:
