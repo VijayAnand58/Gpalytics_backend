@@ -39,7 +39,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16)),
     same_site="None",  # Required for cross-origin cookies
-    https_only=False,  # Ensure cookies are sent only over HTTPS
+    https_only=True,  # Ensure cookies are sent only over HTTPS
     max_age=2700
 )
 
