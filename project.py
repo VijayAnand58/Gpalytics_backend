@@ -319,7 +319,7 @@ def get_prediction_next_sem(regno):
             attended_sem_list=[]
             for details in document["gpa-details"]:
                 attended_sem_list.append(details["semester"])
-            if len(attended_sem_list)<4:
+            if len(attended_sem_list)<3:
                 return "Error, insufficient data to predict next semester prediction"
             if len(attended_sem_list)==8:
                 return "Maximum semesters reached, cant calculate for unavailable semester"
