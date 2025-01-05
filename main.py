@@ -8,7 +8,8 @@ import os
 import secrets
 from project import (
     insert,check,addcgpa,get_all_marks,assaign_marks,assaign_cgpa,get_percentile,
-    get_max_and_min_gpa,get_max_and_min_gpa_local,get_prediction_next_sem,get_full_user_details
+    get_max_and_min_gpa,get_max_and_min_gpa_local,get_prediction_next_sem,get_full_user_details,
+    list_of_people,list_of_people_cgpa
 )
 from gemini import sharpen_image,process_result_card
 # Load environment variables
@@ -273,6 +274,34 @@ async def upload_image(request:Request,file: UploadFile=File(...)):
 
     else:
         raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")        
+
+@app.get("/protected/top-10-gpa")
+async def top_10(request:Request,data: GetMinMax=Depends()):
+    username=request.session.get("username")
+    if username:
+        result=list_of_people(username,data.sem)
+        if result=="None document return":
+            raise HTTPException(status_code=404,detail="No record exists for this semester")
+        if result =="error":
+            raise HTTPException(status_code=500,detail="Internal server error")
+        else:
+            return result
+    else:
+        raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
+
+@app.get("/protected/top-10-cgpa")
+async def top_10_cgpa(request:Request):
+    username=request.session.get("username")
+    if username:
+        result=list_of_people_cgpa(username)
+        if result=="None document return":
+            raise HTTPException(status_code=404,detail="No record exists for this semester")
+        if result =="error":
+            raise HTTPException(status_code=500,detail="Internal server error")
+        else:
+            return result
+    else:
+        raise HTTPException(status_code=401, detail="Unauthorized access, did not login with username")
 
 @app.post("/logout")
 async def logout(request: Request):

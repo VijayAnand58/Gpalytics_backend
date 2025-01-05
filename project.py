@@ -159,7 +159,7 @@ def assaign_marks(regno:str,semester:int):
         gpa=sum1/sum(total_credits)
         result=register.update_one(
                 {"regno":regno,"gpa-details.semester":semester},
-                {"$set":{"gpa-details.$.gpa":gpa,"gpa-details.$.credits_sem":sum(total_credits)}}) 
+                {"$set":{"gpa-details.$.gpa":round(gpa,2),"gpa-details.$.credits_sem":sum(total_credits)}}) 
         print("GPA updated successfully")      
     except Exception as e:
         print("Error while accessing",e)
@@ -174,7 +174,7 @@ def assaign_cgpa(regno:str):
                 all_gpas.append(sem['gpa'])
                 all_credits.append(sem["credits_sem"])
             cgpa=(sum(all_gpas)/len(all_gpas))
-            register.update_one({'regno':regno},{"$set":{"cgpa_of_sem":cgpa,"total_credits":sum(all_credits)}})
+            register.update_one({'regno':regno},{"$set":{"cgpa_of_sem":round(cgpa,2),"total_credits":sum(all_credits)}})
             print("succesfully added cgpa which was",cgpa)
             print("succesfully added credits which was",sum(all_credits))
         else:
@@ -350,4 +350,45 @@ def get_prediction_next_sem(regno):
 #     except Exception as e:
 #         print("Error in get most difficult subject while checking for batch",e)
 #         return "error"
-    
+def get_top_10_records(data:dict):
+    items=list(data.items())
+    top_10=items[:10]
+    return dict(top_10)
+
+def list_of_people(regno:str,sem:int):
+    try:
+        batch_document=register.find_one({"regno":regno,"batch_year":{"$exists": True}},{"_id":0,"batch_year":1})
+        batch=batch_document.get("batch_year")
+        document=register.find({"gpa-details":{"$exists": True},"batch_year":{"$exists": True,"$eq":batch}},{"_id":0,"password":0})
+        masterdoc={}
+        if document is not None:
+            for details in document:
+                for semdetails in details["gpa-details"]:
+                    if semdetails["semester"]==sem:
+                        masterdoc[details["regno"]]=[details["name"],semdetails["gpa"]]
+            if len(masterdoc)==0:
+                return "None document return"
+            sorted_masterdoc = dict(sorted(masterdoc.items(), key=lambda item: item[1][1]))
+            return get_top_10_records(sorted_masterdoc)
+        else:
+            return "None document return"
+    except Exception as e:
+        print("Error in list of people function",e)
+        return "error"
+
+def list_of_people_cgpa(regno):
+    try:
+        batch_document=register.find_one({"regno":regno,"batch_year":{"$exists": True}},{"_id":0,"batch_year":1})
+        batch=batch_document.get("batch_year")
+        document=register.find({"gpa-details":{"$exists": True},"batch_year":{"$exists": True,"$eq":batch},"total_credits":{"$exists":True}},{"_id":0,"password":0,"gpa-details":0,"batch_year":0})
+        masterdoc={}
+        if document is not None:
+            for details in document:
+                masterdoc[details["regno"]]=[details["name"],details["total_credits"],details["cgpa_of_sem"]]
+            sorted_masterdoc = dict(sorted(masterdoc.items(), key=lambda item: item[1][2]))
+            return get_top_10_records(sorted_masterdoc)
+        else:
+            return "None document return"
+    except Exception as e:
+        print("Error in list of people cgpa method",e)
+        return "error"
