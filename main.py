@@ -22,6 +22,7 @@ app = FastAPI()
 allowed_origins = [
     "http://localhost:3000",  # Local development
     "https://gpalytics.vercel.app",  # Production frontend
+    "https://display-card.onrender.com",
 ]
 
 # Configure CORS middleware
