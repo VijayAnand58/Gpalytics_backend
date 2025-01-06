@@ -175,8 +175,6 @@ def assaign_cgpa(regno:str):
                 all_credits.append(sem["credits_sem"])
             cgpa=(sum(all_gpas)/len(all_gpas))
             register.update_one({'regno':regno},{"$set":{"cgpa_of_sem":round(cgpa,2),"total_credits":sum(all_credits)}})
-            print("succesfully added cgpa which was",cgpa)
-            print("succesfully added credits which was",sum(all_credits))
         else:
             print("fatal error")
             return "error"
@@ -206,9 +204,9 @@ def get_percentile(regno:str,semseter:int):
         return "Database not populated"
     
     def find_percentile(value, list1): 
-        sorted_values = sorted(list1)  
+        sorted_values = sorted(list(set(list1)))  
         rank = sorted_values.index(value) + 1 
-        percentile = ((rank - 1) / (len(list1) - 1)) * 100 
+        percentile = ((rank) / (len(sorted_values))) * 100 
         return percentile
     
     try:
@@ -220,7 +218,6 @@ def get_percentile(regno:str,semseter:int):
                     found=True
                     gpa_inst=details['gpa']
             if found:
-                print(gpa_inst)
                 return find_percentile(gpa_inst,li)
             else:
                 print("error while finding percentile")
